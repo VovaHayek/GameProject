@@ -6,8 +6,16 @@ import os
 #GAME VARIABLES
 pygame.init()
 WIDTH, HEIGHT = 550, 900
-BG = (180, 228, 255)
 WINDOW = pygame.display.set_mode((WIDTH, HEIGHT))
+
+#Background options
+BG = pygame.image.load('images/moving-background.png').convert()
+BG_WIDTH = BG.get_width()
+BG_HEIGHT = BG.get_height()
+BG_Y = 0
+BG_TILES = 3
+BG_SCROLL = 0
+
 START_TIME = pygame.time.get_ticks()
 SCORE = 0
 
@@ -38,6 +46,14 @@ class GameFunctions():
     def text_objects(self, text, font):
         textSurface = font.render(text, True, (0, 0, 0))
         return textSurface, textSurface.get_rect()
+
+    def moving_background(self):
+        global BG_SCROLL
+        for i in range(1, BG_TILES+1):
+            WINDOW.blit(BG, (-(BG_WIDTH/2), -(i*BG_HEIGHT-HEIGHT)+BG_SCROLL))
+        BG_SCROLL += 1
+        if BG_SCROLL > BG_HEIGHT:
+            BG_SCROLL = 0
 
     def score_display(self):
         global SCORE
@@ -82,8 +98,9 @@ game_functions = GameFunctions()
 
 
 #PLAYER CLASS
-class Player(object):
+class Player():
     def __init__(self):
+        #super(Player, self).__init__()
         self.Y_POS = 630
         self.X_POS = 213
         self.KITTY = pygame.Rect(self.X_POS, self.Y_POS, CHARACTER_WIDTH, CHARACTER_HEIGHT)
@@ -171,7 +188,7 @@ class StartGame:
 
     def draw_window(self):
         """Updating game window"""
-        WINDOW.fill(BG)
+        game_functions.moving_background()
         game_functions.score_display()
         player.create_player()
         enemies.spawn_enemies()
