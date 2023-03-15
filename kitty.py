@@ -2,9 +2,11 @@ import pygame
 import random
 import time
 import os
+import sys
 
 #GAME VARIABLES
 pygame.init()
+pygame.font.init()
 WIDTH, HEIGHT = 550, 900
 WINDOW = pygame.display.set_mode((WIDTH, HEIGHT))
 
@@ -16,30 +18,15 @@ BG_Y = 0
 BG_TILES = 3
 BG_SCROLL = 0
 
-START_TIME = pygame.time.get_ticks()
 SCORE = 0
-
-#Character options
-CHARACTER_IMAGE = pygame.image.load(os.path.join('images', 'character.png'))
-CHARACTER_HEIGHT = 130
-CHARACTER_WIDTH = 80
-CHARACTER = pygame.transform.scale(CHARACTER_IMAGE, (CHARACTER_WIDTH, CHARACTER_HEIGHT))
-
-#Enemy options
-ENEMY_LIST = []
-ENEMY_IMAGE = pygame.image.load(os.path.join('images', 'enemy.png'))
-ENEMY_WIDTH = 133
-ENEMY_HEIGHT = 60
-ENEMY = pygame.transform.scale(ENEMY_IMAGE, (ENEMY_WIDTH, ENEMY_HEIGHT))
 
 #GAME FUNCTIONS CLASS
 class GameFunctions():
     def restart(self):
         global SCORE
 
-        ENEMY_LIST.clear()
-        player.KITTY.x = player.X_POS
-        player.KITTY.y = player.Y_POS
+        all_sprites.empty()
+        enemies_sprites.empty()
         SCORE = 0
         start.main()
 
@@ -94,83 +81,72 @@ class GameFunctions():
         TEXT_SURF, TEXT_RECT = self.text_objects(msg, SMALL_TEXT)
         TEXT_RECT.center = ((x+(width/2)), (y+(height/2)))
         WINDOW.blit(TEXT_SURF, TEXT_RECT)
-game_functions = GameFunctions()
 
+
+#Sprite lists
+all_sprites = pygame.sprite.Group()
+enemies_sprites = pygame.sprite.Group()
 
 #PLAYER CLASS
-class Player():
+class Player(pygame.sprite.Sprite):
     def __init__(self):
-        #super(Player, self).__init__()
-        self.Y_POS = 630
-        self.X_POS = 213
-        self.KITTY = pygame.Rect(self.X_POS, self.Y_POS, CHARACTER_WIDTH, CHARACTER_HEIGHT)
-
-    def create_player(self):
-        """Spawns character when game's started, and updates position of character when cursor moved"""
-        WINDOW.blit(CHARACTER, (self.KITTY.x, self.KITTY.y))
+        super(Player, self).__init__()
+        self.player_image = pygame.image.load(os.path.join('images', 'character.png'))
+        self.image = pygame.transform.scale(self.player_image, (80, 130))
+        self.rect = self.image.get_rect()
+        self.rect.centerx = WIDTH/2
+        self.rect.bottom = HEIGHT-100
 
     def character_movement(self, keys_pressed):
-        """Character's movement functionality"""
         mouse_x, mouse_y = pygame.mouse.get_pos()
         if keys_pressed[0]:
-            self.KITTY.x = mouse_x-(CHARACTER_WIDTH/2)
+            self.rect.centerx = mouse_x
         if keys_pressed[0]:
-            self.KITTY.y = mouse_y-(CHARACTER_HEIGHT/2)
+            self.rect.centery = mouse_y
 
-        if keys_pressed[0] and mouse_x <= CHARACTER_WIDTH/2:
-            self.KITTY.x = 0
-        if keys_pressed[0] and mouse_x >= WIDTH-(CHARACTER_WIDTH/2):
-            self.KITTY.x = WIDTH-CHARACTER_WIDTH
+        if keys_pressed[0] and mouse_x <= self.rect.width/2:
+            self.rect.x = 0
+        if keys_pressed[0] and mouse_x >= WIDTH-(self.rect.width/2):
+            self.rect.x = WIDTH-self.rect.width
 
-        if keys_pressed[0] and mouse_y <= (WIDTH/2)+CHARACTER_HEIGHT:
-            self.KITTY.y = (WIDTH/2)+(CHARACTER_HEIGHT/2)
-        if keys_pressed[0] and mouse_y >= HEIGHT-(CHARACTER_HEIGHT/2):
-            self.KITTY.y = HEIGHT-CHARACTER_HEIGHT
-player = Player()
+        if keys_pressed[0] and mouse_y <= (WIDTH/2)+self.rect.height:
+            self.rect.y = (WIDTH/2)+(self.rect.height/2)
+        if keys_pressed[0] and mouse_y >= HEIGHT-(self.rect.height/2):
+            self.rect.y = HEIGHT-self.rect.height
 
-class Enemy(object):
+class Enemy(pygame.sprite.Sprite):
     def __init__(self):
-        self.X_POS = random.randint(0, 500)
-        self.Y_POS = -ENEMY_HEIGHT
-        self.SPEED_TIME = pygame.time.get_ticks()
-        self.ENEMY_SPEED = 2
+        super(Enemy, self).__init__()
+        self.enemy_image = pygame.image.load(os.path.join('images', 'enemy.png')).convert()
+        self.enemy_image.set_colorkey((255, 255, 255))
+        self.image = pygame.transform.scale(self.enemy_image, (133, 60))
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randint(random.randint(0, 100), random.randint(300, 417))
+        self.rect.bottom = 0
 
-    def create_enemy(self):
-        if len(ENEMY_LIST) < 10:
-            BIRD = pygame.Rect(random.randint(0, 400), self.Y_POS, ENEMY_WIDTH, ENEMY_HEIGHT)
-            ENEMY_LIST.append(BIRD)
-    
-    def spawn_enemies(self):
-        for index, enemy in enumerate(ENEMY_LIST):
-            WINDOW.blit(ENEMY, (enemy.x, enemy.y))
-            if player.KITTY.colliderect(enemy):
-                game_functions.game_over()
-            self.slide_down(enemy, index)
-        for index, enemy in enumerate(ENEMY_LIST):
-            return enemy
+    def update(self):
+        self.rect.y += 2
+        if self.rect.y > HEIGHT:
+            self.rect.bottom = 0
+            self.rect.x = random.randint(5, 400)
 
+    def add_enemies(self, enemy):
+        enemies_sprites.add(enemy)
+        all_sprites.add(enemy)
 
-    def slide_down(self, enemy, enemy_id):
-        global SCORE
-
-        if pygame.time.get_ticks() > self.SPEED_TIME:
-            self.SPEED_TIME >= pygame.time.get_ticks()
-            enemy.y += self.ENEMY_SPEED
-            if enemy.y > 200 and enemy.y < 203:
-                self.create_enemy()
-            if enemy.y > 900:
-                SCORE += 1
-                ENEMY_LIST.pop(enemy_id)
+player = Player()
 enemies = Enemy()
-
-
+game_functions = GameFunctions()
 class StartGame:
     def __init__(self):
         self.FPS = 120
+        self.last_spawn = pygame.time.get_ticks()
     def main(self):
         clock = pygame.time.Clock()
         run = True
-        enemies.create_enemy()
+
+        all_sprites.add(player)
+
         while run:
             clock.tick(self.FPS)
             NOW_TIME = pygame.time.get_ticks()
@@ -181,17 +157,31 @@ class StartGame:
             keys_pressed = pygame.mouse.get_pressed()
             player.character_movement(keys_pressed)
 
+            if pygame.sprite.spritecollide(player, enemies_sprites, True, pygame.sprite.collide_mask):
+                game_functions.game_over()
+
             self.draw_window()
 
         pygame.quit()
-    
+
+    def create_enemies(self):
+        global SCORE
+        now = pygame.time.get_ticks()
+        if len(enemies_sprites) < 5:
+            if now - self.last_spawn >= 800:
+                enemies.add_enemies(Enemy())
+                self.last_spawn = now
+        for enemy in enemies_sprites:
+            if enemy.rect.y > HEIGHT-1:
+                SCORE += 1
 
     def draw_window(self):
         """Updating game window"""
         game_functions.moving_background()
         game_functions.score_display()
-        player.create_player()
-        enemies.spawn_enemies()
+        self.create_enemies()
+        all_sprites.update()
+        all_sprites.draw(WINDOW)
         pygame.display.update()
 
 if __name__ == "__main__":
